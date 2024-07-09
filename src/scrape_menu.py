@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC 
 
-from helper_file import *
+from dining_info import *
 
 # Setup timezones for PST to ensure continuity
 pst_timezone = timezone('America/Los_Angeles')
