@@ -13,6 +13,31 @@ from selenium.webdriver.support import expected_conditions as EC
 from dining_info import *
 
 
+# Method to locate dropdown
+def find_dropdown(id_name):
+    # Construct dropdown ID
+    dropdown_id = f'MainContent_lst{id_name}'
+    
+    # Wait for the dropdown to be present and return it
+    dropdown = WebDriverWait(driver, 5, 100).until(
+        EC.presence_of_element_located((By.ID, dropdown_id))
+    )
+
+    return dropdown
+
+# Method to locate item in dropdown
+def select_in_dropdown(id_name):
+    # Construct the dropdown ID selector
+    item_id = f'#MainContent_lst{id_name} option[selected="selected"]'
+
+    # Retrieve currently selected date
+    item = WebDriverWait(driver, 5, 100).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, item_id))
+    ).get_attribute('value')
+
+    return item
+
+
 # INITIAL TIME AND DRIVER SETUP
 # Setup timezones for PST to ensure continuity
 pst_timezone = timezone('America/Los_Angeles')
@@ -38,63 +63,46 @@ dummy_date = pst_now.strftime('%m/%d/%Y').lstrip("0").replace("/0", "/")
 dummy_meal = "Breakfast"
 dummy_hall = "Arrillaga"
 
-# Wait for date dropdown to be present 
-date_dropdown = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.ID, 'MainContent_lstDay'))
-)
-
+date_dropdown = driver.find_element(By.ID, 'MainContent_lstDay')
 Select(date_dropdown).select_by_value(dummy_date)
 
-# Wait for dining hall dropdown to be present
-dining_hall_dropdown = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.ID, 'MainContent_lstLocations'))
-)
-
+dining_hall_dropdown = driver.find_element(By.ID, 'MainContent_lstLocations')
 Select(dining_hall_dropdown).select_by_value(dummy_hall)
 
-# Wait for the meal type dropdown to be present
-meal_type_dropdown = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.ID, 'MainContent_lstMealType'))
-)
-
+meal_type_dropdown = driver.find_element(By.ID, 'MainContent_lstMealType')
 Select(meal_type_dropdown).select_by_value(dummy_meal)
 
 
-# Iterate through halls and meals for specific date
-print("Fetching data for:", dummy_date)
-for hall in dining_hall_list:
-    # Wait for the dining hall dropdown to be present
-    dining_hall_dropdown = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.ID, 'MainContent_lstLocations'))
-    )
+# ITERATE THROUGH DATES, HALLS, AND MEALS
+for date in dates_list:
+    date_dropdown = find_dropdown('Day')
 
-    # Select dining_hall from the dining hall dropdown
-    Select(dining_hall_dropdown).select_by_value(hall)
+    # Select date from the dining hall dropdown
+    Select(date_dropdown).select_by_value(date)
 
-    # Retrieve currently selected dining hall
-    selected_dining_hall = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, '#MainContent_lstLocations option[selected="selected"]'))
-    ).get_attribute('value')
+    selected_date = select_in_dropdown('Day')
 
-    print("Selected dining hall:", dining_hall_alias[selected_dining_hall])
+    print("Fetching data for:", selected_date)
 
-    for meal in meal_type_list:
-        # Wait for the meal type dropdown to be present
-        meal_type_dropdown = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, 'MainContent_lstMealType'))
-        )
+    for hall in dining_hall_list:
+        dining_hall_dropdown = find_dropdown('Locations')
 
-        # Select meal_type from the meal type dropdown
-        Select(meal_type_dropdown).select_by_value(meal)
+        # Select hall from the dining hall dropdown
+        Select(dining_hall_dropdown).select_by_value(hall)
 
-        # Retrieve currently selected meal type
-        selected_meal_type = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '#MainContent_lstMealType option[selected="selected"]'))
-        ).get_attribute('value')
+        selected_dining_hall = select_in_dropdown('Locations')
 
-        print("Selected meal type:", selected_meal_type)
-    
-    time.sleep(1)
+        print("Selected dining hall:", dining_hall_alias[selected_dining_hall])
+
+        for meal in meal_type_list:
+            meal_type_dropdown = find_dropdown('MealType')
+
+            # Select meal from the meal type dropdown
+            Select(meal_type_dropdown).select_by_value(meal)
+
+            selected_meal_type = select_in_dropdown('MealType')
+
+            print("Selected meal type:", selected_meal_type)
 
 
 # Wait for user input before closing the browser
