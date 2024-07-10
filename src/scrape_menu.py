@@ -12,14 +12,11 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from dining_info import *
 
+
+# INITIAL TIME AND DRIVER SETUP
 # Setup timezones for PST to ensure continuity
 pst_timezone = timezone('America/Los_Angeles')
 pst_now = datetime.now(pst_timezone)
-
-# SETUP VARIABLES FOR TEMPORARY TESTING
-todays_date = pst_now.strftime('%m/%d/%Y').lstrip("0").replace("/0", "/")
-meal_type = "Breakfast"
-dining_hall = "Arrillaga"
 
 # Set up Chrome options
 chrome_options = webdriver.ChromeOptions()
@@ -31,26 +28,40 @@ chrome_options.add_argument('--disable-extensions')
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
+# Reference link to online Stanford Dining menu
 url = 'https://rdeapps.stanford.edu/dininghallmenu/'
 driver.get(url)
 
-# Wait for the date dropdown to be present
+
+# INITIALIZE PAGE AND LOAD DOM WITH DUMMY SETTINGS
+dummy_date = pst_now.strftime('%m/%d/%Y').lstrip("0").replace("/0", "/")
+dummy_meal = "Breakfast"
+dummy_hall = "Arrillaga"
+
+# Wait for date dropdown to be present 
 date_dropdown = WebDriverWait(driver, 10).until(
     EC.presence_of_element_located((By.ID, 'MainContent_lstDay'))
 )
 
-# Retrieve currently selected date
-selected_date = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, '#MainContent_lstDay option[selected="selected"]'))
-).get_attribute('value')
+Select(date_dropdown).select_by_value(dummy_date)
 
-# Convert selected date format to match today's date format
-selected_date_converted = selected_date.split(' - ')[0]
+# Wait for dining hall dropdown to be present
+dining_hall_dropdown = WebDriverWait(driver, 10).until(
+    EC.presence_of_element_located((By.ID, 'MainContent_lstLocations'))
+)
 
-print("Dates match:", selected_date_converted == todays_date)
+Select(dining_hall_dropdown).select_by_value(dummy_hall)
 
-# ------------------------------------------------------------------------------------------------- #
+# Wait for the meal type dropdown to be present
+meal_type_dropdown = WebDriverWait(driver, 10).until(
+    EC.presence_of_element_located((By.ID, 'MainContent_lstMealType'))
+)
 
+Select(meal_type_dropdown).select_by_value(dummy_meal)
+
+
+# Iterate through halls and meals for specific date
+print("Fetching data for:", dummy_date)
 for hall in dining_hall_list:
     # Wait for the dining hall dropdown to be present
     dining_hall_dropdown = WebDriverWait(driver, 10).until(
@@ -59,10 +70,12 @@ for hall in dining_hall_list:
 
     # Select dining_hall from the dining hall dropdown
     Select(dining_hall_dropdown).select_by_value(hall)
-    
+
     # Retrieve currently selected dining hall
-    selected_dining_hall = Select(dining_hall_dropdown).first_selected_option.get_attribute('value')
-    
+    selected_dining_hall = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, '#MainContent_lstLocations option[selected="selected"]'))
+    ).get_attribute('value')
+
     print("Selected dining hall:", dining_hall_alias[selected_dining_hall])
 
     for meal in meal_type_list:
@@ -74,20 +87,15 @@ for hall in dining_hall_list:
         # Select meal_type from the meal type dropdown
         Select(meal_type_dropdown).select_by_value(meal)
 
-        # Retrieve currently selected meal type // using this method because stale element when trying method in line 61
+        # Retrieve currently selected meal type
         selected_meal_type = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, '#MainContent_lstMealType option[selected="selected"]'))
         ).get_attribute('value')
 
         print("Selected meal type:", selected_meal_type)
     
-    # Close instance of WebDriver and reinstate to stop stale element
-    driver.quit()
-    time.sleep(0.5)
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.get(url)
+    time.sleep(1)
 
-# ------------------------------------------------------------------------------------------------- #
 
 # Wait for user input before closing the browser
 input("Press enter to close the browser...")
