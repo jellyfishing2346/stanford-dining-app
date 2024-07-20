@@ -2,24 +2,35 @@ import time
 import csv
 from datetime import datetime
 from pytz import timezone
-
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service 
 from selenium.webdriver.common.by import By 
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC 
-
 from dining_info import *
 
-# Setup timezones for PST to ensure continuity
+def find_dropdown(id_name):
+    """
+    Locate and return the dropdown element based on provided id_name
+    """
+    dropdown_id = f'MainContent_lst{id_name}'
+    return WebDriverWait(driver, 5, 100).until(
+        EC.presence_of_element_located((By.ID, dropdown_id))
+    )
+
+def select_in_dropdown(id_name):
+    """
+    Retrieve the currently selected value from the dropdown
+    """
+    item_id = f'#MainContent_lst{id_name} option[selected="selected"]'
+    return WebDriverWait(driver, 5, 100).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, item_id))
+    ).get_attribute('value')
+
+# Setup timezones for PST
 pst_timezone = timezone('America/Los_Angeles')
 pst_now = datetime.now(pst_timezone)
-
-# SETUP VARIABLES FOR TEMPORARY TESTING
-todays_date = pst_now.strftime('%m/%d/%Y').lstrip("0").replace("/0", "/")
-meal_type = "Breakfast"
-dining_hall = "Arrillaga"
 
 # Set up Chrome options
 chrome_options = webdriver.ChromeOptions()
@@ -27,67 +38,38 @@ chrome_options = webdriver.ChromeOptions()
 # chrome_options.add_argument('--headless')
 chrome_options.add_argument('--disable-extensions')
 
-# Set up WebDriver using WebDriver Manager
+# Set up WebDriver
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
+# Open Stanford Dining Menu page
 url = 'https://rdeapps.stanford.edu/dininghallmenu/'
 driver.get(url)
 
-# Wait for the date dropdown to be present
-date_dropdown = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.ID, 'MainContent_lstDay'))
-)
+# Initialize page with dummy settings
+dummy_date = pst_now.strftime('%m/%d/%Y').lstrip("0").replace("/0", "/")
+dummy_hall = "Arrillaga"
+dummy_meal = "Breakfast"
 
-# Retrieve currently selected date
-selected_date = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, '#MainContent_lstDay option[selected="selected"]'))
-).get_attribute('value')
+Select(driver.find_element(By.ID, 'MainContent_lstDay')).select_by_value(dummy_date)
+Select(driver.find_element(By.ID, 'MainContent_lstLocations')).select_by_value(dummy_hall)
+Select(driver.find_element(By.ID, 'MainContent_lstMealType')).select_by_value(dummy_meal)
 
-# Convert selected date format to match today's date format
-selected_date_converted = selected_date.split(' - ')[0]
+# Iterate through dates, halls, and meals
+for date in dates_list:
+    Select(find_dropdown('Day')).select_by_value(date)
+    selected_date = select_in_dropdown('Day')
+    print("Fetching data for:", selected_date)
 
-print("Dates match:", selected_date_converted == todays_date)
+    for hall in dining_hall_list:
+        Select(find_dropdown('Locations')).select_by_value(hall)
+        selected_dining_hall = select_in_dropdown('Locations')
+        print("Selected dining hall:", dining_hall_alias[selected_dining_hall])
 
-# ------------------------------------------------------------------------------------------------- #
-
-for hall in dining_hall_list:
-    # Wait for the dining hall dropdown to be present
-    dining_hall_dropdown = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.ID, 'MainContent_lstLocations'))
-    )
-
-    # Select dining_hall from the dining hall dropdown
-    Select(dining_hall_dropdown).select_by_value(hall)
-    
-    # Retrieve currently selected dining hall
-    selected_dining_hall = Select(dining_hall_dropdown).first_selected_option.get_attribute('value')
-    
-    print("Selected dining hall:", dining_hall_alias[selected_dining_hall])
-
-    for meal in meal_type_list:
-        # Wait for the meal type dropdown to be present
-        meal_type_dropdown = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, 'MainContent_lstMealType'))
-        )
-
-        # Select meal_type from the meal type dropdown
-        Select(meal_type_dropdown).select_by_value(meal)
-
-        # Retrieve currently selected meal type // using this method because stale element when trying method in line 61
-        selected_meal_type = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '#MainContent_lstMealType option[selected="selected"]'))
-        ).get_attribute('value')
-
-        print("Selected meal type:", selected_meal_type)
-    
-    # Close instance of WebDriver and reinstate to stop stale element
-    driver.quit()
-    time.sleep(0.5)
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.get(url)
-
-# ------------------------------------------------------------------------------------------------- #
+        for meal in meal_type_list:
+            Select(find_dropdown('MealType')).select_by_value(meal)
+            selected_meal_type = select_in_dropdown('MealType')
+            print("Selected meal type:", selected_meal_type)
 
 # Wait for user input before closing the browser
 input("Press enter to close the browser...")
